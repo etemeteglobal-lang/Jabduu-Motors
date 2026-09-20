@@ -95,58 +95,28 @@ export default function FullyOperationalMobileApp() {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-// --- 2. AUTHENTICATION LOGIC (BACKEND INTEGRATED) ---
-  const handleLogin = async (e) => {
+  // --- 2. AUTHENTICATION LOGIC ---
+  const handleLogin = (e) => {
     e.preventDefault();
     setLoginError('');
-
-    try {
-      // 1. ወደ ባክኤንድ API የመግቢያ ጥሪ መላክ
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1'}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: usernameInput.trim(),
-          pin: pinInput.trim()
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.user) {
-        // 2. ከባክኤንድ የመጣውን JWT Token እና User መረጃ ማስቀመጥ
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-
-        // 3. የተጠቃሚውን ስቴት (State) ማዘመን
-        setCurrentUser({
-          name: data.user.name,
-          role: data.user.role,
-          roleKey: data.user.roleKey,
-          location: data.user.location,
-          locationIcon: Building2,
-          canGenerate: data.user.canGenerate ?? true,
-          canScan: data.user.canScan ?? true
-        });
-
-        setFormData(prev => ({ ...prev, warehouse: data.user.location }));
-        setUsernameInput('');
-        setPinInput('');
-      } else {
-        setLoginError(data.message || 'Invalid Username or PIN Code!');
-      }
-    } catch (error) {
-      console.error('Login Error:', error);
-      setLoginError('ከባክኤንድ ሰርቨር ጋር መገናኘት አልተቻለም! (Server Error)');
+    const foundUser = USER_DATABASE[usernameInput.trim().toLowerCase()];
+    
+    if (foundUser && foundUser.pin === pinInput) {
+      setCurrentUser(foundUser);
+      setFormData(prev => ({ ...prev, warehouse: foundUser.location }));
+      setUsernameInput('');
+      setPinInput('');
+    } else {
+      setLoginError('Invalid Username or PIN Code!');
     }
   };
+
   const handleLogout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  setCurrentUser(null);
-  setStockItems([]);
-  setLoginError('');
-};
+    stopCameraScanner();
+    setCurrentUser(null);
+    setScannedItem(null);
+    setGeneratedQr(null);
+  };
 
   // --- 3. HARDWARE CAMERA SCANNER ---
   const startCameraScanner = async () => {
